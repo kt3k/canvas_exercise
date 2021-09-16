@@ -26,7 +26,9 @@ export class Main {
     this.canvas.style.height = `${this.h}px`;
     this.ctx = this.canvas.getContext("2d")!;
     console.log(this.w, this.h);
-    this.ctx.fillStyle = "white";
+    // this.ctx.fillStyle = "white";
+    this.ctx.fillStyle = "#93C5FD";
+    this.ctx.fillStyle = "#F9FAFB";
     this.ctx.fillRect(0, 0, this.w * 2, this.h * 2);
     this.draw();
   }
@@ -34,16 +36,20 @@ export class Main {
   async draw() {
     const ctx = this.ctx;
     const { h, w } = this;
-    ctx.fillStyle = "black";
+    // ctx.fillStyle = "#1E3A8A";
+    ctx.fillStyle = "#60A5FA";
+    ctx.fillStyle = "#374151";
     let n = 0;
     for (const i of range(w * 2)) {
       const x = i / (w * 2);
-      console.log(x);
-      const th0 = (1 + Math.cos(2 * Math.PI * x)) / 3 + 0.2;
+      const r = 0.7;
+      const th0 = (1 + Math.cos(6 * 6 * Math.PI * x)) / 3 + r;
+      const th0_1 = (1 + Math.cos(6 * Math.PI * x)) / 3 + r;
       for (const j of range(h * 2)) {
         const y = j / (h * 2);
-        const th1 = (1 + Math.cos(2 * Math.PI * y)) / 3 + 0.4;
-        if (Math.random() > th0 * th1) {
+        const th1 = (1 + Math.cos(6 * 2 * Math.PI * y)) / 3 + r;
+        const th1_1 = (1 + Math.cos(2 * Math.PI * y)) / 3 + r;
+        if (Math.random() < th0 * th0_1 * th1 * th1_1) {
           ctx.fillRect(i, j, 1, 1);
           if (n++ % 1000 === 0) await delay(1);
         }
