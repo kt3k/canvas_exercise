@@ -4,8 +4,14 @@ import {
   innerHTML,
   wired,
 } from "https://cdn.skypack.dev/capsid@1.7.0";
+import seedrandom from "https://cdn.skypack.dev/seedrandom";
 
-const CELL_SIZE = 10;
+console.log(seedrandom);
+
+const rng = seedrandom("hello.p");
+
+const CELL_SIZE = 5;
+const WAIT_STEPS = 10000;
 const WAIT = 3;
 
 @component("main")
@@ -33,84 +39,64 @@ export class Main {
     this.draw();
   }
 
+  async forEach(fn: (i: number, j: number) => void): Promise<void> {
+    const { h, w } = this;
+    await forEach(range(w * 2), range(h * 2), fn);
+  }
+
   async draw() {
     const ctx = this.ctx;
     const { h, w } = this;
-    // ctx.fillStyle = "#1E3A8A";
     ctx.fillStyle = "black";
     let n = 0;
-    await forEach(range(w * 2), range(h * 2), async (i, j) => {
+    await this.forEach(async (i, j) => {
       const x = i / (w * 2);
       const r = 0.4;
       const th0 = (1 + Math.cos(2 * Math.PI * x)) / 3 + r;
       const y = j / (h * 2);
       const th1 = (1 + Math.cos(2 * Math.PI * y)) / 3 + r;
       if (probably(1 - th0 * th1)) {
-        if (probably(1 - th1)) {
-          ctx.fillStyle = this.palette[1];
-        } else {
-          ctx.fillStyle = this.palette[2];
-        }
-        ctx.fillRect(i * CELL_SIZE, j * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+        const c = probably(1 - th1) ? this.palette[1] : this.palette[2];
+        setPixel(ctx, i, j, c);
       }
-      if (n++ % 50 === 0) await delay(WAIT);
+      if (n++ % WAIT_STEPS === 0) await delay(WAIT);
     });
     n = 0;
-    await forEach(range(w * 2), range(h * 2), async (i, j) => {
+    await this.forEach(async (i, j) => {
       if ((i % 16 === 0 || i % 16 === 15) || (j % 16 === 0 || j % 16 === 15)) {
-        if (probably(0.95)) {
-          ctx.fillStyle = "black";
-        } else {
-          ctx.fillStyle = randomColor();
-        }
-        ctx.fillRect(i * CELL_SIZE, j * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+        const c = probably(0.95) ? "black" : this.palette[1];
+        setPixel(ctx, i, j, c);
       }
-      if (n++ % 50 === 0) await delay(WAIT);
+      if (n++ % WAIT_STEPS === 0) await delay(WAIT);
     });
     let ctxCopy: CanvasRenderingContext2D;
     ctxCopy = clone(ctx);
-    await forEach(range(w * 2), range(h * 2), async (i, j) => {
+    await this.forEach(async (i, j) => {
       const pixels = getPixels(ctxCopy, i, j);
-      if (pixels[1]?.toUpperCase() === this.palette[2]) {
-        //ctx.fillStyle = this.palette[2];
-        ctx.fillStyle = randomColor();
-        if (probably(0.2)) ctx.fillRect(i * CELL_SIZE, j * CELL_SIZE, CELL_SIZE, CELL_SIZE);        
+      if (pixels[4]?.toUpperCase() === this.palette[1]
+      && pixels[6]?.toUpperCase() === this.palette[1]) {
+        const c = randomColor();
+        if (probably(0.99)) setPixel(ctx, i, j, c);
       }
-      if (n++ % 50 === 0) await delay(WAIT);
+      if (n++ % WAIT_STEPS === 0) await delay(WAIT);
     });
-    /*
     ctxCopy = clone(ctx);
-    await forEach(range(w * 2), range(h * 2), async (i, j) => {
+    await this.forEach(async (i, j) => {
       const pixels = getPixels(ctxCopy, i, j);
       if (pixels.slice(0, 3).filter((x) => x?.toUpperCase() === this.palette[2]).length >= 2) {
-        ctx.fillStyle = this.palette[2];
-        if (probably(0.90)) ctx.fillRect(i * CELL_SIZE, j * CELL_SIZE, CELL_SIZE, CELL_SIZE);        
+        if (probably(0.10)) setPixel(ctx, i, j, this.palette[2]);
       }
-      if (n++ % 50 === 0) await delay(WAIT);
+      if (n++ % WAIT_STEPS === 0) await delay(WAIT);
     });
-    ctxCopy = clone(ctx);
-    await forEach(range(w * 2), range(h * 2), async (i, j) => {
-      const pixels = getPixels(ctxCopy, i, j);
-      if (pixels.filter((x) => x?.toUpperCase() === this.palette[1]).length >= 3) {
-        ctx.fillStyle = this.palette[2];
-        if (probably(0.50)) ctx.fillRect(i * CELL_SIZE, j * CELL_SIZE, CELL_SIZE, CELL_SIZE);
-      }
-      if (n++ % 50 === 0) await delay(WAIT);
-    });
-    ctxCopy = clone(ctx);
-    await forEach(range(w * 2), range(h * 2), async (i, j) => {
-      const pixels = getPixels(ctxCopy, i, j);
-      if (pixels.filter((x) => x?.toUpperCase() === this.palette[2]).length >= 3) {
-        ctx.fillStyle = this.palette[1];
-        if (probably(0.50)) ctx.fillRect(i * CELL_SIZE, j * CELL_SIZE, CELL_SIZE, CELL_SIZE);        
-      }
-      if (n++ % 50 === 0) await delay(WAIT);
-    });
-    */
   }
 }
 
-function getPixel(ctx: CanvasRenderingContext2D, x: number, y: number) {
+function setPixel(ctx: CanvasRenderingContext2D, x: number, y: number, color: string): void {
+  ctx.fillStyle = color;
+  ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+}
+
+function getPixel(ctx: CanvasRenderingContext2D, x: number, y: number): string | null {
   x *= CELL_SIZE;
   y *= CELL_SIZE;
   const w = ctx.canvas.width;
@@ -165,7 +151,7 @@ function range(n: number): number[] {
 }
 
 function dice(n: number) {
-  return Math.floor(Math.random() * n);
+  return Math.floor(rng() * n);
 }
 
 function delay(n: number) {
@@ -258,5 +244,5 @@ const random3Colors = () => {
 };
 
 function probably(n: number): boolean {
-  return Math.random() < n
+  return rng() < n
 }
