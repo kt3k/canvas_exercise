@@ -2,23 +2,36 @@
 import {
   component,
   innerHTML,
+  on,
   wired,
 } from "https://cdn.skypack.dev/capsid@1.7.0";
 import seedrandom from "https://cdn.skypack.dev/seedrandom";
 
-console.log(seedrandom);
-
-const rng = seedrandom("hello.p");
+// deno-lint-ignore no-explicit-any
+let rng: any;
 
 const CELL_SIZE = 5;
 const WAIT_STEPS = 10000;
 const WAIT = 3;
 
 @component("main")
-@innerHTML(`<canvas></canvas>`)
+@innerHTML(`
+  <input type="text" />
+  <button class="draw">draw</button>
+  <button class="random">random</button>
+  <br />
+  <canvas></canvas>
+  <div class="palette"></div>
+`)
 export class Main {
   @wired("canvas")
   canvas!: HTMLCanvasElement;
+
+  @wired("input")
+  input!: HTMLInputElement;
+
+  @wired(".palette")
+  paletteDiv!: HTMLDivElement;
 
   w!: number;
   h!: number;
@@ -33,10 +46,19 @@ export class Main {
     this.canvas.style.width = `${this.w * CELL_SIZE}px`;
     this.canvas.style.height = `${this.h * CELL_SIZE}px`;
     this.ctx = this.canvas.getContext("2d")!;
-    this.palette = random3Colors();
-    this.ctx.fillStyle = this.palette[0];
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    this.input.value = Math.random().toString(36);
+  }
+
+  @on.click.at('.draw')
+  onDraw() {
+    rng = seedrandom(this.input.value);
     this.draw();
+  }
+
+  @on.click.at(".random")
+  onRandom() {
+    this.input.value = Math.random().toString(36);
+    this.onDraw();
   }
 
   async forEach(fn: (i: number, j: number) => void): Promise<void> {
@@ -44,10 +66,17 @@ export class Main {
     await forEach(range(w * 2), range(h * 2), fn);
   }
 
+  rollPalette() {
+    this.palette = random3Colors();
+    this.paletteDiv.textContent = JSON.stringify(this.palette);
+  }
+
   async draw() {
     const ctx = this.ctx;
     const { h, w } = this;
-    ctx.fillStyle = "black";
+    this.rollPalette();
+    ctx.fillStyle = this.palette[0];
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     let n = 0;
     await this.forEach(async (i, j) => {
       const x = i / (w * 2);
