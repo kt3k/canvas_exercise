@@ -49,7 +49,7 @@ export class Main {
     this.input.value = Math.random().toString(36);
   }
 
-  @on.click.at('.draw')
+  @on.click.at(".draw")
   onDraw() {
     rng = seedrandom(this.input.value);
     this.draw();
@@ -102,8 +102,10 @@ export class Main {
     ctxCopy = clone(ctx);
     await this.forEach(async (i, j) => {
       const pixels = getPixels(ctxCopy, i, j);
-      if (pixels[4]?.toUpperCase() === this.palette[1]
-      && pixels[6]?.toUpperCase() === this.palette[1]) {
+      if (
+        pixels[4]?.toUpperCase() === this.palette[1] &&
+        pixels[6]?.toUpperCase() === this.palette[1]
+      ) {
         const c = randomColor();
         if (probably(0.99)) setPixel(ctx, i, j, c);
       }
@@ -112,7 +114,10 @@ export class Main {
     ctxCopy = clone(ctx);
     await this.forEach(async (i, j) => {
       const pixels = getPixels(ctxCopy, i, j);
-      if (pixels.slice(0, 3).filter((x) => x?.toUpperCase() === this.palette[2]).length >= 2) {
+      if (
+        pixels.slice(0, 3).filter((x) => x?.toUpperCase() === this.palette[2])
+          .length >= 2
+      ) {
         if (probably(0.10)) setPixel(ctx, i, j, this.palette[2]);
       }
       if (n++ % WAIT_STEPS === 0) await delay(WAIT);
@@ -120,12 +125,21 @@ export class Main {
   }
 }
 
-function setPixel(ctx: CanvasRenderingContext2D, x: number, y: number, color: string): void {
+function setPixel(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  color: string,
+): void {
   ctx.fillStyle = color;
   ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
 }
 
-function getPixel(ctx: CanvasRenderingContext2D, x: number, y: number): string | null {
+function getPixel(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+): string | null {
   x *= CELL_SIZE;
   y *= CELL_SIZE;
   const w = ctx.canvas.width;
@@ -148,19 +162,19 @@ function getPixels(ctx: CanvasRenderingContext2D, x: number, y: number) {
 }
 
 function clone(ctx: CanvasRenderingContext2D): CanvasRenderingContext2D {
-    //create a new canvas
-    const newCanvas = document.createElement('canvas');
-    const newCtx = newCanvas.getContext('2d')!;
+  //create a new canvas
+  const newCanvas = document.createElement("canvas");
+  const newCtx = newCanvas.getContext("2d")!;
 
-    //set dimensions
-    newCanvas.width = ctx.canvas.width;
-    newCanvas.height = ctx.canvas.height;
+  //set dimensions
+  newCanvas.width = ctx.canvas.width;
+  newCanvas.height = ctx.canvas.height;
 
-    //apply the old canvas to the new one
-    newCtx.drawImage(ctx.canvas, 0, 0);
+  //apply the old canvas to the new one
+  newCtx.drawImage(ctx.canvas, 0, 0);
 
-    //return the new canvas
-    return newCtx;
+  //return the new canvas
+  return newCtx;
 }
 
 function hex(n: number) {
@@ -273,5 +287,5 @@ const random3Colors = () => {
 };
 
 function probably(n: number): boolean {
-  return rng() < n
+  return rng() < n;
 }
