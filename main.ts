@@ -4,7 +4,7 @@ import {
   innerHTML,
   on,
   wired,
-} from "https://cdn.skypack.dev/capsid@1.7.0";
+} from "https://raw.githubusercontent.com/capsidjs/capsid/982bf882acfdbe9ae1dea8739e30792e5b57d00d/src/mod.ts";
 import seedrandom from "https://cdn.skypack.dev/seedrandom";
 
 // deno-lint-ignore no-explicit-any

@@ -11,7 +11,194 @@
     return result;
   };
 
-  // deno:https://cdn.skypack.dev/-/capsid@v1.7.0-evHDCFdG3Gl3tf0yl91t/dist=es2020,mode=imports/optimized/capsid.js
+  // deno:https://raw.githubusercontent.com/capsidjs/capsid/982bf882acfdbe9ae1dea8739e30792e5b57d00d/src/registry.ts
+  var registry = {};
+  var registry_default = registry;
+
+  // deno:https://raw.githubusercontent.com/capsidjs/capsid/982bf882acfdbe9ae1dea8739e30792e5b57d00d/src/util/check.ts
+  function check(assertion, message) {
+    if (!assertion) {
+      throw new Error(message);
+    }
+  }
+  function checkComponentNameIsValid(name) {
+    check(typeof name === "string", "The name should be a string");
+    check(!!registry_default[name], `The coelement of the given name is not registered: ${name}`);
+  }
+
+  // deno:https://raw.githubusercontent.com/capsidjs/capsid/982bf882acfdbe9ae1dea8739e30792e5b57d00d/src/prep.ts
+  var prep_default = (name, el) => {
+    let classNames;
+    if (!name) {
+      classNames = Object.keys(registry_default);
+    } else {
+      checkComponentNameIsValid(name);
+      classNames = [name];
+    }
+    classNames.map((className) => {
+      [].map.call((el || document).querySelectorAll(registry_default[className].sel), registry_default[className]);
+    });
+  };
+
+  // deno:https://raw.githubusercontent.com/capsidjs/capsid/982bf882acfdbe9ae1dea8739e30792e5b57d00d/src/util/const.ts
+  var COELEMENT_DATA_KEY_PREFIX = "C$";
+  var KEY_EVENT_LISTENERS = "K$";
+  var COMPONENT_NAME_KEY = "N$";
+  var BEFORE_MOUNT_KEY = "B$";
+
+  // deno:https://raw.githubusercontent.com/capsidjs/capsid/982bf882acfdbe9ae1dea8739e30792e5b57d00d/src/init_component.ts
+  var init_component_default = (Constructor, el) => {
+    const coel = new Constructor();
+    coel.el = el;
+    const list = Constructor[BEFORE_MOUNT_KEY];
+    if (Array.isArray(list)) {
+      list.forEach((cb) => {
+        cb(el, coel);
+      });
+    }
+    if (typeof coel.__mount__ === "function") {
+      coel.__mount__();
+    }
+    return coel;
+  };
+
+  // deno:https://raw.githubusercontent.com/capsidjs/capsid/982bf882acfdbe9ae1dea8739e30792e5b57d00d/src/util/document.ts
+  var READY_STATE_CHANGE = "readystatechange";
+  var p;
+  function ready() {
+    return p = p || new Promise((resolve) => {
+      const doc = document;
+      const checkReady = () => {
+        if (doc.readyState === "complete") {
+          resolve();
+          doc.removeEventListener(READY_STATE_CHANGE, checkReady);
+        }
+      };
+      doc.addEventListener(READY_STATE_CHANGE, checkReady);
+      checkReady();
+    });
+  }
+
+  // deno:https://raw.githubusercontent.com/capsidjs/capsid/982bf882acfdbe9ae1dea8739e30792e5b57d00d/src/add_hidden_item.ts
+  var addHiddenItem = (target, key, hook) => {
+    target[key] = (target[key] || []).concat(hook);
+  };
+  var addMountHook = (target, hook) => {
+    addHiddenItem(target, BEFORE_MOUNT_KEY, hook);
+  };
+  var add_hidden_item_default = addHiddenItem;
+
+  // deno:https://raw.githubusercontent.com/capsidjs/capsid/982bf882acfdbe9ae1dea8739e30792e5b57d00d/src/def.ts
+  var def = (name, Constructor) => {
+    check(typeof name === "string", "`name` of a class component has to be a string.");
+    check(typeof Constructor === "function", "`Constructor` of a class component has to be a function");
+    Constructor[COMPONENT_NAME_KEY] = name;
+    const initClass = `${name}-\u{1F48A}`;
+    addMountHook(Constructor, (el, coel) => {
+      el[COELEMENT_DATA_KEY_PREFIX + name] = coel;
+      el.classList.add(name);
+      el.classList.add(initClass);
+    });
+    const initializer = (el) => {
+      if (!el.classList.contains(initClass)) {
+        init_component_default(Constructor, el);
+      }
+    };
+    initializer.sel = `.${name}:not(.${initClass})`;
+    registry_default[name] = initializer;
+    ready().then(() => {
+      prep_default(name);
+    });
+  };
+  var def_default = def;
+
+  // deno:https://raw.githubusercontent.com/capsidjs/capsid/982bf882acfdbe9ae1dea8739e30792e5b57d00d/src/util/debug_message.ts
+  var debug_message_default = (message) => {
+    if (typeof capsidDebugMessage === "function") {
+      capsidDebugMessage(message);
+    }
+  };
+
+  // deno:https://raw.githubusercontent.com/capsidjs/capsid/982bf882acfdbe9ae1dea8739e30792e5b57d00d/src/decorators/on.ts
+  var on = (event, { at } = {}) => (target, key, _) => {
+    const constructor = target.constructor;
+    check(!!event, `Empty event handler is given: constructor=${constructor.name} key=${key}`);
+    addMountHook(constructor, (el, coel) => {
+      const listener = (e) => {
+        if (!at || [].some.call(el.querySelectorAll(at), (node) => {
+          return node === e.target || node.contains(e.target);
+        })) {
+          const __DEV__ = true;
+          if (__DEV__) {
+            debug_message_default({
+              type: "event",
+              module: "\u{1F48A}",
+              color: "#e0407b",
+              e,
+              el,
+              coel
+            });
+          }
+          coel[key](e);
+        }
+      };
+      listener.remove = () => {
+        el.removeEventListener(event, listener);
+      };
+      add_hidden_item_default(coel, KEY_EVENT_LISTENERS, listener);
+      el.addEventListener(event, listener);
+    });
+  };
+  var on_default = on;
+
+  // deno:https://raw.githubusercontent.com/capsidjs/capsid/982bf882acfdbe9ae1dea8739e30792e5b57d00d/src/decorators/on_use_handler.ts
+  var on_use_handler_default = (handlerName) => {
+    on_default[handlerName] = on_default(handlerName);
+    on_default[handlerName].at = (selector) => on_default(handlerName, { at: selector });
+  };
+
+  // deno:https://raw.githubusercontent.com/capsidjs/capsid/982bf882acfdbe9ae1dea8739e30792e5b57d00d/src/decorators/wired.ts
+  var wired = (sel) => (_target, _key) => {
+    return {
+      get: function() {
+        return this.el.querySelector(sel);
+      },
+      configurable: false
+    };
+  };
+  var wiredAll = (sel) => (_target, _key) => {
+    return {
+      get() {
+        return this.el.querySelectorAll(sel);
+      }
+    };
+  };
+  wired.all = wiredAll;
+  var wired_default = wired;
+
+  // deno:https://raw.githubusercontent.com/capsidjs/capsid/982bf882acfdbe9ae1dea8739e30792e5b57d00d/src/decorators/component.ts
+  var component = (name) => {
+    check(typeof name === "string" && !!name, "Component name must be a non-empty string");
+    return (Cls) => {
+      def_default(name, Cls);
+    };
+  };
+  var component_default = component;
+
+  // deno:https://raw.githubusercontent.com/capsidjs/capsid/982bf882acfdbe9ae1dea8739e30792e5b57d00d/src/decorators/inner_html.ts
+  var inner_html_default = (innerHTML) => (Cls) => {
+    addMountHook(Cls, (el) => {
+      el.innerHTML = innerHTML;
+      prep_default(null, el);
+    });
+  };
+
+  // deno:https://raw.githubusercontent.com/capsidjs/capsid/982bf882acfdbe9ae1dea8739e30792e5b57d00d/src/decorators/index.ts
+  on_default.useHandler = on_use_handler_default;
+  on_default.useHandler("click");
+
+  // deno:https://cdn.skypack.dev/-/seedrandom@v3.0.5-893MnPdhjZohiVrYd6CW/dist=es2019,mode=imports/optimized/seedrandom.js
+  var commonjsGlobal = typeof globalThis !== "undefined" ? globalThis : typeof window !== "undefined" ? window : typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : {};
   function createCommonjsModule(fn, basedir, module) {
     return module = {
       path: basedir,
@@ -21,318 +208,13 @@
       }
     }, fn(module, module.exports), module.exports;
   }
-  function commonjsRequire() {
-    throw new Error("Dynamic requires are not currently supported by @rollup/plugin-commonjs");
-  }
-  var capsidCjs = createCommonjsModule(function(module, exports) {
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var ccc = {};
-    function check(assertion, message) {
-      if (!assertion) {
-        throw new Error(message);
-      }
-    }
-    function checkComponentNameIsValid(name) {
-      check(typeof name === "string", "The name should be a string");
-      check(!!ccc[name], "The coelement of the given name is not registered: " + name);
-    }
-    var READY_STATE_CHANGE = "readystatechange";
-    var doc = document;
-    var ready = new Promise(function(resolve) {
-      var checkReady = function() {
-        if (doc.readyState === "complete") {
-          resolve();
-          doc.removeEventListener(READY_STATE_CHANGE, checkReady);
-        }
-      };
-      doc.addEventListener(READY_STATE_CHANGE, checkReady);
-      checkReady();
-    });
-    var prep2 = function(name, el) {
-      var classNames;
-      if (!name) {
-        classNames = Object.keys(ccc);
-      } else {
-        checkComponentNameIsValid(name);
-        classNames = [name];
-      }
-      classNames.map(function(className) {
-        [].map.call((el || doc).querySelectorAll(ccc[className].sel), ccc[className]);
-      });
-    };
-    var COELEMENT_DATA_KEY_PREFIX = "C$";
-    var KEY_EVENT_LISTENERS = "K$";
-    var COMPONENT_NAME_KEY = "N$";
-    var BEFORE_MOUNT_KEY = "B$";
-    var mount2 = function(Constructor, el) {
-      var coel = new Constructor();
-      coel.el = el;
-      var list = Constructor[BEFORE_MOUNT_KEY];
-      if (Array.isArray(list)) {
-        list.forEach(function(cb) {
-          cb(el, coel);
-        });
-      }
-      if (typeof coel.__mount__ === "function") {
-        coel.__mount__();
-      }
-      return coel;
-    };
-    var addHiddenItem = function(target, key, hook) {
-      target[key] = (target[key] || []).concat(hook);
-    };
-    var addMountHook2 = function(target, hook) {
-      addHiddenItem(target, BEFORE_MOUNT_KEY, hook);
-    };
-    var def2 = function(name, Constructor) {
-      check(typeof name === "string", "`name` of a class component has to be a string.");
-      check(typeof Constructor === "function", "`Constructor` of a class component has to be a function");
-      Constructor[COMPONENT_NAME_KEY] = name;
-      var initClass = name + "-\u{1F48A}";
-      addMountHook2(Constructor, function(el, coel) {
-        el[COELEMENT_DATA_KEY_PREFIX + name] = coel;
-        el.classList.add(name, initClass);
-      });
-      var initializer = function(el) {
-        if (!el.classList.contains(initClass)) {
-          mount2(Constructor, el);
-        }
-      };
-      initializer.sel = "." + name + ":not(." + initClass + ")";
-      ccc[name] = initializer;
-      ready.then(function() {
-        prep2(name);
-      });
-    };
-    var get2 = function(name, el) {
-      checkComponentNameIsValid(name);
-      var coel = el[COELEMENT_DATA_KEY_PREFIX + name];
-      check(coel, "no coelement named: " + name + ", on the dom: " + el.tagName);
-      return coel;
-    };
-    var make2 = function(name, elm) {
-      checkComponentNameIsValid(name);
-      ccc[name](elm);
-      return get2(name, elm);
-    };
-    var unmount2 = function(name, el) {
-      var coel = get2(name, el);
-      if (typeof coel.__unmount__ === "function") {
-        coel.__unmount__();
-      }
-      el.classList.remove(name, name + "-\u{1F48A}");
-      (coel[KEY_EVENT_LISTENERS] || []).forEach(function(listener) {
-        listener.remove();
-      });
-      delete el[COELEMENT_DATA_KEY_PREFIX + name];
-      delete coel.el;
-    };
-    var install$$1 = function(capsidModule, options) {
-      check(typeof capsidModule.install === "function", "The given capsid module does not have `install` method. Please check the install call.");
-      capsidModule.install(capsid2, options || {});
-    };
-    var on2 = function(event, _a) {
-      var at = (_a === void 0 ? {} : _a).at;
-      return function(target, key, _) {
-        var constructor = target.constructor;
-        check(!!event, "Empty event handler is given: constructor=" + constructor.name + " key=" + key);
-        addMountHook2(constructor, function(el, coel) {
-          var listener = function(e) {
-            if (!at || [].some.call(el.querySelectorAll(at), function(node) {
-              return node === e.target || node.contains(e.target);
-            })) {
-              coel[key](e);
-            }
-          };
-          listener.remove = function() {
-            el.removeEventListener(event, listener);
-          };
-          addHiddenItem(coel, KEY_EVENT_LISTENERS, listener);
-          el.addEventListener(event, listener);
-        });
-      };
-    };
-    var useHandler = function(handlerName) {
-      on2[handlerName] = on2(handlerName);
-      on2[handlerName].at = function(selector) {
-        return on2(handlerName, { at: selector });
-      };
-    };
-    var triggerToElements = function(elements, type, bubbles, result) {
-      var emit = function(r) {
-        elements.forEach(function(el) {
-          el.dispatchEvent(new CustomEvent(type, { detail: r, bubbles }));
-        });
-      };
-      if (result && result.then) {
-        result.then(emit);
-      } else {
-        emit(result);
-      }
-    };
-    var emits2 = function(event) {
-      return function(target, key, descriptor) {
-        var method = descriptor.value;
-        var constructor = target.constructor;
-        check(!!event, "Unable to emits an empty event: constructor=" + constructor.name + " key=" + key);
-        descriptor.value = function() {
-          var result = method.apply(this, arguments);
-          triggerToElements([this.el], event, true, result);
-          return result;
-        };
-      };
-    };
-    var wired2 = function(sel) {
-      return function(target, key) {
-        Object.defineProperty(target.constructor.prototype, key, {
-          get: function() {
-            return this.el.querySelector(sel);
-          },
-          configurable: false
-        });
-      };
-    };
-    var wiredAll = function(sel) {
-      return function(target, key) {
-        Object.defineProperty(target.constructor.prototype, key, {
-          get: function() {
-            return this.el.querySelectorAll(sel);
-          },
-          configurable: false
-        });
-      };
-    };
-    wired2.all = wiredAll;
-    var component2 = function(name) {
-      check(typeof name === "string" && !!name, "Component name must be a non-empty string");
-      return function(Cls) {
-        def2(name, Cls);
-      };
-    };
-    var is2 = function() {
-      var args = [];
-      for (var _i = 0; _i < arguments.length; _i++) {
-        args[_i] = arguments[_i];
-      }
-      return function(Cls) {
-        addMountHook2(Cls, function(el) {
-          var _a;
-          (_a = el.classList).add.apply(_a, args);
-        });
-      };
-    };
-    var innerHtml = function(innerHTML2) {
-      return function(Cls) {
-        addMountHook2(Cls, function(el) {
-          el.innerHTML = innerHTML2;
-          prep2(null, el);
-        });
-      };
-    };
-    var pub2 = function(event, targetSelector) {
-      return function(target, key, descriptor) {
-        var method = descriptor.value;
-        var constructor = target.constructor;
-        check(!!event, "Unable to publish empty event: constructor=" + constructor.name + " key=" + key);
-        var selector = targetSelector || ".sub\\:" + event;
-        descriptor.value = function() {
-          var result = method.apply(this, arguments);
-          triggerToElements([].concat.apply([], document.querySelectorAll(selector)), event, false, result);
-          return result;
-        };
-      };
-    };
-    var sub2 = function() {
-      var args = [];
-      for (var _i = 0; _i < arguments.length; _i++) {
-        args[_i] = arguments[_i];
-      }
-      return function(Cls) {
-        is2.apply(void 0, args.map(function(event) {
-          return "sub:" + event;
-        }))(Cls);
-      };
-    };
-    on2.useHandler = useHandler;
-    on2.useHandler("click");
-    var capsid2 = Object.freeze({
-      def: def2,
-      prep: prep2,
-      make: make2,
-      mount: mount2,
-      unmount: unmount2,
-      get: get2,
-      install: install$$1,
-      on: on2,
-      emits: emits2,
-      wired: wired2,
-      component: component2,
-      is: is2,
-      innerHTML: innerHtml,
-      pub: pub2,
-      sub: sub2,
-      addMountHook: addMountHook2,
-      __ccc__: ccc
-    });
-    exports.def = def2;
-    exports.prep = prep2;
-    exports.make = make2;
-    exports.mount = mount2;
-    exports.unmount = unmount2;
-    exports.get = get2;
-    exports.install = install$$1;
-    exports.on = on2;
-    exports.emits = emits2;
-    exports.wired = wired2;
-    exports.component = component2;
-    exports.is = is2;
-    exports.innerHTML = innerHtml;
-    exports.pub = pub2;
-    exports.sub = sub2;
-    exports.addMountHook = addMountHook2;
-    exports.__ccc__ = ccc;
-  });
-  var capsid = createCommonjsModule(function(module) {
-    {
-      module.exports = capsidCjs;
-    }
-  });
-  var __ccc__ = capsid.__ccc__;
-  var addMountHook = capsid.addMountHook;
-  var component = capsid.component;
-  var def = capsid.def;
-  var emits = capsid.emits;
-  var get = capsid.get;
-  var innerHTML = capsid.innerHTML;
-  var install = capsid.install;
-  var is = capsid.is;
-  var make = capsid.make;
-  var mount = capsid.mount;
-  var on = capsid.on;
-  var prep = capsid.prep;
-  var pub = capsid.pub;
-  var sub = capsid.sub;
-  var unmount = capsid.unmount;
-  var wired = capsid.wired;
-
-  // deno:https://cdn.skypack.dev/-/seedrandom@v3.0.5-893MnPdhjZohiVrYd6CW/dist=es2020,mode=imports/optimized/seedrandom.js
-  var commonjsGlobal = typeof globalThis !== "undefined" ? globalThis : typeof window !== "undefined" ? window : typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : {};
-  function createCommonjsModule2(fn, basedir, module) {
-    return module = {
-      path: basedir,
-      exports: {},
-      require: function(path, base) {
-        return commonjsRequire2(path, base === void 0 || base === null ? module.path : base);
-      }
-    }, fn(module, module.exports), module.exports;
-  }
   function getDefaultExportFromNamespaceIfNotNamed(n) {
     return n && Object.prototype.hasOwnProperty.call(n, "default") && Object.keys(n).length === 1 ? n["default"] : n;
   }
-  function commonjsRequire2() {
+  function commonjsRequire() {
     throw new Error("Dynamic requires are not currently supported by @rollup/plugin-commonjs");
   }
-  var alea = createCommonjsModule2(function(module) {
+  var alea = createCommonjsModule(function(module) {
     (function(global2, module2, define) {
       function Alea(seed) {
         var me = this, mash = Mash();
@@ -414,7 +296,7 @@
       }
     })(commonjsGlobal, module, false);
   });
-  var xor128 = createCommonjsModule2(function(module) {
+  var xor128 = createCommonjsModule(function(module) {
     (function(global2, module2, define) {
       function XorGen(seed) {
         var me = this, strseed = "";
@@ -478,7 +360,7 @@
       }
     })(commonjsGlobal, module, false);
   });
-  var xorwow = createCommonjsModule2(function(module) {
+  var xorwow = createCommonjsModule(function(module) {
     (function(global2, module2, define) {
       function XorGen(seed) {
         var me = this, strseed = "";
@@ -549,7 +431,7 @@
       }
     })(commonjsGlobal, module, false);
   });
-  var xorshift7 = createCommonjsModule2(function(module) {
+  var xorshift7 = createCommonjsModule(function(module) {
     (function(global2, module2, define) {
       function XorGen(seed) {
         var me = this;
@@ -636,7 +518,7 @@
       }
     })(commonjsGlobal, module, false);
   });
-  var xor4096 = createCommonjsModule2(function(module) {
+  var xor4096 = createCommonjsModule(function(module) {
     (function(global2, module2, define) {
       function XorGen(seed) {
         var me = this;
@@ -737,7 +619,7 @@
       }
     })(commonjsGlobal, module, false);
   });
-  var tychei = createCommonjsModule2(function(module) {
+  var tychei = createCommonjsModule(function(module) {
     (function(global2, module2, define) {
       function XorGen(seed) {
         var me = this, strseed = "";
@@ -812,7 +694,7 @@
     default: _nodeResolve_empty
   });
   var require$$0 = /* @__PURE__ */ getDefaultExportFromNamespaceIfNotNamed(_nodeResolve_empty$1);
-  var seedrandom = createCommonjsModule2(function(module) {
+  var seedrandom = createCommonjsModule(function(module) {
     (function(global2, pool, math) {
       var width = 256, chunks = 6, digits = 52, rngname = "random", startdenom = math.pow(width, chunks), significance = math.pow(2, digits), overflow = significance * 2, mask = width - 1, nodecrypto;
       function seedrandom2(seed, options, callback) {
@@ -1031,23 +913,23 @@
     }
   };
   __decorateClass([
-    wired("canvas")
+    wired_default("canvas")
   ], Main.prototype, "canvas", 2);
   __decorateClass([
-    wired("input")
+    wired_default("input")
   ], Main.prototype, "input", 2);
   __decorateClass([
-    wired(".palette")
+    wired_default(".palette")
   ], Main.prototype, "paletteDiv", 2);
   __decorateClass([
-    on.click.at(".draw")
+    on_default.click.at(".draw")
   ], Main.prototype, "onDraw", 1);
   __decorateClass([
-    on.click.at(".random")
+    on_default.click.at(".random")
   ], Main.prototype, "onRandom", 1);
   Main = __decorateClass([
-    component("main"),
-    innerHTML(`
+    component_default("main"),
+    inner_html_default(`
   <input type="text" />
   <button class="draw">draw</button>
   <button class="random">random</button>
